@@ -2,19 +2,14 @@ package com.justinshenk.walabot;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Build;
 import android.support.design.button.MaterialButton;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -62,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
         // Instantiate the RequestQueue.
         final RequestQueue queue = Volley.newRequestQueue(this);
         final GraphView graph = (GraphView) findViewById(R.id.graph);
-        String url ="http://172.16.6.153:3000/status";
+        String url ="http://10.0.0.43:3000/status";
         final DataPoint[] series = new DataPoint[nrDataPoints];
         final MaterialButton calibrate = (MaterialButton) findViewById(R.id.calibrate);
         calibrate.setOnClickListener(new View.OnClickListener() {
@@ -70,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
                 Double refDistance = dataset[dataset.length-1];
                 String distanceText = (String) currDistance.getText();
                 String distance = distanceText.split("Distance: ")[1];
+                minDistance = Double.parseDouble(distance);
                 calibration.setText("Calibration: " + distance);
             }
         });
@@ -83,6 +79,17 @@ public class MainActivity extends AppCompatActivity {
         graph.getViewport().setYAxisBoundsManual(true);
         graph.getViewport().setXAxisBoundsManual(true);
 
+        // Notification
+        final NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, "NotificationID")
+                .setSmallIcon(R.drawable.star)
+                .setContentTitle("Posture Pal")
+                .setContentText("Sit up")
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setAutoCancel(true);
+        createNotificationChannel();
+
+        final NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        notificationManager.notify(1, mBuilder.build()); // testing
         // Instantiate JsonObjectRequest
         final JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
                 (Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
@@ -101,13 +108,16 @@ public class MainActivity extends AppCompatActivity {
                                 if (dataset[i] > maxY) {
                                     dataset[i] = dataset[i - 1];
                                 } else if (dataset[i] < minDistance){
-                                    notify();
                                 }
                                 series[i] = new DataPoint(i, dataset[i]);
                             }
-                            if (notifyCountdown <= 0) {
 
+                            if (distance < minDistance) {
+                                Log.i("POSTURE", distance.toString() + " " + minDistance.toString());
+                                // notificationId is a unique int for each notification that you must define
+                                notificationManager.notify(1, mBuilder.build());
                             }
+
                             LineGraphSeries<DataPoint> data = new LineGraphSeries<>(series);
 
                             // Update graph
@@ -138,12 +148,6 @@ public class MainActivity extends AppCompatActivity {
         }, 0, 1000);
     }
 
-    /* Calibrate Posture */
-    public void setReference(View view) {
-        if (dataset[dataset.length - 1] > 0) {
-            minDistance = dataset[dataset.length - 1];
-        }
-    }
 
 //    public void sendNotification(View view) {
 //        Log.i("NOTIFICATION", "Button pressed");
@@ -208,4 +212,23 @@ public class MainActivity extends AppCompatActivity {
             // called after the user finishes moving the SeekBar
         }
     };
+
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = getString(R.string.channel_description);
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel("NotificationID", name, importance);
+            channel.setDescription(description);
+            channel.enableLights(true);
+            channel.enableVibration(true);
+            channel.setShowBadge(true);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
 }
