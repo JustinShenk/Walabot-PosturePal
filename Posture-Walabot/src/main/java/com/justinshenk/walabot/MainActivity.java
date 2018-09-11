@@ -67,9 +67,7 @@ public class MainActivity extends AppCompatActivity {
         final MaterialButton calibrate = (MaterialButton) findViewById(R.id.calibrate);
         calibrate.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-//                TextView currDist = (TextView) v.findViewById(R.id.currDistance);
                 Double refDistance = dataset[dataset.length-1];
-//                TextView calibration = v.findViewById(R.id.calibration);
                 String distanceText = (String) currDistance.getText();
                 String distance = distanceText.split("Distance: ")[1];
                 calibration.setText("Calibration: " + distance);
@@ -84,6 +82,8 @@ public class MainActivity extends AppCompatActivity {
         graph.getViewport().setMaxY(maxY);
         graph.getViewport().setYAxisBoundsManual(true);
         graph.getViewport().setXAxisBoundsManual(true);
+
+        // Instantiate JsonObjectRequest
         final JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
                 (Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
 
@@ -109,9 +109,8 @@ public class MainActivity extends AppCompatActivity {
 
                             }
                             LineGraphSeries<DataPoint> data = new LineGraphSeries<>(series);
-//                            LineGraphSeries<DataPoint> data = new LineGraphSeries<>(new DataPoint[] {
-//                                    new DataPoint(timestep[0], distance)
-//                            });
+
+                            // Update graph
                             graph.removeAllSeries();
                             graph.addSeries(data);
 
@@ -130,22 +129,16 @@ public class MainActivity extends AppCompatActivity {
                 });
         queue.add(jsonObjectRequest);
 
+        // repeat request every second
         new Timer().scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
                 queue.add(jsonObjectRequest);
             }
         }, 0, 1000);
-/*
-        while (true){
-
-            queue.add(jsonObjectRequest);
-
-        }*/
-
-// Access the RequestQueue through your singleton class.
     }
 
+    /* Calibrate Posture */
     public void setReference(View view) {
         if (dataset[dataset.length - 1] > 0) {
             minDistance = dataset[dataset.length - 1];
